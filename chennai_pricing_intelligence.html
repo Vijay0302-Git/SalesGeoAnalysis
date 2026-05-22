@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chennai Geo Pricing Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --surface2: #f8fafc;
+  --border: #e2e8f0;
+  --accent: #0ea5e9;
+  --accent2: #f97316;
+  --accent3: #7c3aed;
+  --green: #16a34a;
+  --yellow: #d97706;
+  --red: #dc2626;
+  --text: #0f172a;
+  --muted: #64748b;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-head);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.header h1 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.header-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.header-badge {
+  background: linear-gradient(90deg, var(--accent3), var(--accent));
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
+
+/* MAIN LAYOUT */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* LEFT CONTROLS */
+.controls-panel {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.control-group {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.control-row {
+  display: flex;
+  gap: 8px;
+}
+
+label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: block;
+  font-family: var(--font-mono);
+}
+
+input, select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+input:focus, select:focus { border-color: var(--accent); }
+select option { background: var(--surface); }
+
+.field { margin-bottom: 8px; }
+.field:last-child { margin-bottom: 0; }
+
+.btn-analyze {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent3), var(--accent));
+  border: none;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: opacity 0.2s, transform 0.1s;
+  text-transform: uppercase;
+}
+.btn-analyze:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-analyze:active { transform: translateY(0); }
+
+.btn-reset {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 7px;
+  border-radius: 6px;
+  font-family: var(--font-head);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-reset:hover { border-color: var(--accent2); color: var(--accent2); }
+
+/* Legend */
+.legend-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--muted); margin-bottom: 6px;
+}
+.legend-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* MIDDLE: MAP */
+.map-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+}
+
+#map {
+  flex: 1;
+  z-index: 1;
+}
+
+/* KPI BAR */
+.kpi-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.kpi-item {
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
+  border-right: 1px solid var(--border);
+}
+.kpi-item:last-child { border-right: none; }
+.kpi-label { font-size: 9px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.kpi-value { font-size: 18px; font-weight: 700; color: var(--accent); font-family: var(--font-mono); }
+.kpi-change { font-size: 10px; font-family: var(--font-mono); }
+.kpi-change.up { color: var(--green); }
+.kpi-change.down { color: var(--red); }
+.kpi-change.neutral { color: var(--muted); }
+
+/* RIGHT PANEL */
+.right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.right-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 6px;
+  font-family: var(--font-head);
+  font-size: 11px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: none;
+}
+.tab-content.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* STORES TABLE */
+.stores-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.stores-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.stores-table th {
+  background: var(--surface2);
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  font-family: var(--font-mono);
+}
+.stores-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+.stores-table tr:hover td { background: var(--surface2); cursor: pointer; }
+
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.status-badge.green { background: rgba(16,185,129,0.15); color: var(--green); }
+.status-badge.yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.status-badge.red { background: rgba(239,68,68,0.15); color: var(--red); }
+
+/* CHARTS TAB */
+.charts-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chart-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.chart-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.chart-wrapper { position: relative; height: 130px; }
+
+/* PRICING ENGINE */
+.pricing-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.price-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.price-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.price-row:last-child { border-bottom: none; }
+.price-row-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.price-row-val { font-size: 14px; font-weight: 700; font-family: var(--font-mono); }
+
+.suggest-card {
+  border-radius: 8px;
+  padding: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.suggest-card.recommended {
+  background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(124,58,237,0.1));
+  border: 1px solid rgba(0,212,255,0.3);
+}
+.suggest-card.competitive {
+  background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(0,212,255,0.05));
+  border: 1px solid rgba(16,185,129,0.3);
+}
+.suggest-card.safe {
+  background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.05));
+  border: 1px solid rgba(245,158,11,0.3);
+}
+.suggest-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.suggest-price { font-size: 26px; font-weight: 800; font-family: var(--font-mono); margin: 4px 0; }
+.suggest-card.recommended .suggest-price { color: var(--accent); }
+.suggest-card.competitive .suggest-price { color: var(--green); }
+.suggest-card.safe .suggest-price { color: var(--yellow); }
+.suggest-desc { font-size: 10px; color: var(--muted); line-height: 1.4; }
+.suggest-badge {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 10px;
+}
+.suggest-card.recommended .suggest-badge { background: rgba(0,212,255,0.2); color: var(--accent); }
+.suggest-card.competitive .suggest-badge { background: rgba(16,185,129,0.2); color: var(--green); }
+.suggest-card.safe .suggest-badge { background: rgba(245,158,11,0.2); color: var(--yellow); }
+
+/* MAP marker styles */
+.custom-marker {
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+/* No data */
+.no-data {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+.no-data span { font-size: 30px; display: block; margin-bottom: 8px; }
+
+/* Toast confirm */
+.toast {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 18px;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  white-space: nowrap;
+  animation: slideUp 0.2s ease;
+}
+.toast.show { display: flex; }
+@keyframes slideUp { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+.toast-text { font-size: 12px; font-family: var(--font-mono); color: var(--text); }
+.toast-text strong { color: var(--accent); }
+.toast-btn { padding: 5px 14px; border-radius: 6px; font-family: var(--font-head); font-size: 11px; font-weight: 700; cursor: pointer; border: none; transition: opacity 0.2s; }
+.toast-btn:hover { opacity: 0.85; }
+.toast-confirm { background: var(--accent); color: #0a0e1a; }
+.toast-cancel  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+/* Pin marker pulse */
+@keyframes pinPulse {
+  0%   { stroke-opacity: 1; stroke-width: 2; }
+  50%  { stroke-opacity: 0.4; stroke-width: 6; }
+  100% { stroke-opacity: 1; stroke-width: 2; }
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Popup */
+.leaflet-popup-content-wrapper {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  color: var(--text) !important;
+  font-family: var(--font-head) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+}
+.leaflet-popup-tip { background: var(--surface) !important; }
+.leaflet-popup-content { margin: 0 !important; padding: 0 !important; }
+
+.popup-inner { padding: 14px; min-width: 200px; }
+.popup-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.popup-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+.popup-row:last-child { border-bottom: none; }
+.popup-key { color: var(--muted); font-family: var(--font-mono); }
+.popup-val { font-family: var(--font-mono); font-weight: 600; }
+
+/* Radius control */
+.radius-btns { display: flex; gap: 6px; }
+.radius-btn {
+  flex: 1;
+  padding: 6px 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.radius-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.1); }
+
+.status-indicator {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--muted);
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-icon">📍</div>
+    <div>
+      <h1>GEO PRICING INTELLIGENCE</h1>
+      <div class="header-sub">Chennai Region · 120 Stores · Live Analysis</div>
+    </div>
+  </div>
+  <div class="status-indicator">
+    <div class="status-dot"></div>
+    <span id="status-text">Step 1 — Click the map to pick a location</span>
+  </div>
+  <div class="header-badge">CHENNAI MARKET</div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT CONTROLS -->
+  <div class="controls-panel">
+    <div class="panel-label">① Click Map → Confirm Location</div>
+    <div class="control-group">
+      <div class="field">
+        <label>LATITUDE</label>
+        <input type="number" id="input-lat" value="13.0827" step="0.0001" placeholder="13.0827">
+      </div>
+      <div class="field">
+        <label>LONGITUDE</label>
+        <input type="number" id="input-lon" value="80.2707" step="0.0001" placeholder="80.2707">
+      </div>
+    </div>
+
+    <div class="panel-label">② Select Radius</div>
+    <div class="control-group">
+      <div class="radius-btns">
+        <div class="radius-btn active" data-km="1" onclick="setRadius(1,this)">1 km</div>
+        <div class="radius-btn" data-km="2" onclick="setRadius(2,this)">2 km</div>
+        <div class="radius-btn" data-km="3" onclick="setRadius(3,this)">3 km</div>
+      </div>
+    </div>
+
+    <div class="panel-label">③ Product Filter</div>
+    <div class="control-group">
+      <div class="field">
+        <label>PRODUCT</label>
+        <select id="input-product">
+          <option value="all">All Products</option>
+          <option value="Rice">Rice</option>
+          <option value="Oil">Oil</option>
+          <option value="Sugar">Sugar</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn-analyze" onclick="runAnalysis()">⚡ Analyze</button>
+    <button class="btn-reset" onclick="resetAll()">↺ Reset View</button>
+
+    <div class="panel-label">🔵 Supply Status Legend</div>
+    <div class="control-group">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--green);color:var(--green)"></div>
+        <span>Supplied This Year (2026)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--yellow);color:var(--yellow)"></div>
+        <span>Supplied Last Year (2025)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:var(--red);color:var(--red)"></div>
+        <span>Supply Stopped (2024)</span>
+      </div>
+    </div>
+
+    <div class="panel-label">📊 Map Summary</div>
+    <div class="control-group">
+      <div class="legend-item" style="justify-content:space-between;">
+        <span>Total Stores</span>
+        <span id="stat-total" style="color:var(--accent);font-family:var(--font-mono);font-weight:700">120</span>
+      </div>
+      <div class="legend-item" style="justify-content:space-between;">
+        <span>In Radius</span>
+        <span id="stat-radius" style="color:var(--accent2);font-family:var(--font-mono);font-weight:700">—</span>
+      </div>
+      <div class="legend-item" style="justify-content:space-between;">
+        <span>Filtered</span>
+        <span id="stat-filtered" style="color:var(--green);font-family:var(--font-mono);font-weight:700">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP CENTER -->
+  <div class="map-container">
+    <div id="map"></div>
+
+    <!-- LOCATION CONFIRM TOAST -->
+    <div class="toast" id="location-toast">
+      <span class="toast-text">📍 Set location to <strong id="toast-coords"></strong> ?</span>
+      <button class="toast-btn toast-confirm" onclick="confirmLocation()">✓ Yes, use this</button>
+      <button class="toast-btn toast-cancel"  onclick="cancelLocation()">✕ Cancel</button>
+    </div>
+
+    <!-- KPI BAR -->
+    <div class="kpi-bar">
+      <div class="kpi-item">
+        <div class="kpi-label">Avg Price</div>
+        <div class="kpi-value" id="kpi-avg">—</div>
+        <div class="kpi-change neutral" id="kpi-avg-sub">select radius</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">Median Price</div>
+        <div class="kpi-value" id="kpi-median">—</div>
+        <div class="kpi-change neutral" id="kpi-median-sub">in radius</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">Last Sold</div>
+        <div class="kpi-value" id="kpi-last">—</div>
+        <div class="kpi-change neutral" id="kpi-last-sub">most recent</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">YoY Change</div>
+        <div class="kpi-value" id="kpi-yoy">—</div>
+        <div class="kpi-change neutral" id="kpi-yoy-sub">2024→2025</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">MoM Change</div>
+        <div class="kpi-value" id="kpi-mom">—</div>
+        <div class="kpi-change neutral" id="kpi-mom-sub">last 2 months</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">Stores in Radius</div>
+        <div class="kpi-value" id="kpi-count">—</div>
+        <div class="kpi-change neutral" id="kpi-count-sub">active product</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="right-tabs">
+      <button class="tab-btn active" onclick="switchTab('stores',this)">Stores</button>
+      <button class="tab-btn" onclick="switchTab('charts',this)">Charts</button>
+      <button class="tab-btn" onclick="switchTab('pricing',this)">Pricing Engine</button>
+    </div>
+
+    <!-- STORES TAB -->
+    <div class="tab-content active" id="tab-stores">
+      <div class="stores-table-wrap">
+        <div id="stores-content">
+          <div class="no-data"><span>🗺️</span>Run analysis to see stores in radius</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS TAB -->
+    <div class="tab-content" id="tab-charts">
+      <div class="charts-area">
+        <div class="chart-card">
+          <div class="chart-title">📈 Monthly Price Trend</div>
+          <div class="chart-wrapper"><canvas id="chart-trend"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">📊 Year-on-Year Comparison</div>
+          <div class="chart-wrapper"><canvas id="chart-yoy"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">🔔 Price Distribution</div>
+          <div class="chart-wrapper"><canvas id="chart-dist"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRICING ENGINE TAB -->
+    <div class="tab-content" id="tab-pricing">
+      <div class="pricing-area" id="pricing-content">
+        <div class="no-data"><span>⚡</span>Run analysis to see pricing recommendations</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ======================= DATA =======================
+const RAW_DATA = [{"store_id":"S1","store_name":"Chennai_Store_1","latitude":13.073184,"longitude":80.283689,"product_id":"P2","product_name":"Oil","date":"2024-09-19","year":2024,"month":9,"quantity":45,"price_per_unit":463,"total_value":20835,"supply_status":"No"},{"store_id":"S2","store_name":"Chennai_Store_2","latitude":13.070231,"longitude":80.275506,"product_id":"P3","product_name":"Sugar","date":"2024-05-21","year":2024,"month":5,"quantity":111,"price_per_unit":505,"total_value":56055,"supply_status":"Yes"},{"store_id":"S3","store_name":"Chennai_Store_3","latitude":13.09084,"longitude":80.282319,"product_id":"P1","product_name":"Rice","date":"2024-06-24","year":2024,"month":6,"quantity":150,"price_per_unit":486,"total_value":72900,"supply_status":"No"},{"store_id":"S4","store_name":"Chennai_Store_4","latitude":13.096257,"longitude":80.260992,"product_id":"P2","product_name":"Oil","date":"2026-01-18","year":2026,"month":1,"quantity":149,"price_per_unit":383,"total_value":57067,"supply_status":"No"},{"store_id":"S5","store_name":"Chennai_Store_5","latitude":13.09107,"longitude":80.276479,"product_id":"P3","product_name":"Sugar","date":"2025-01-30","year":2025,"month":1,"quantity":37,"price_per_unit":429,"total_value":15873,"supply_status":"Yes"},{"store_id":"S6","store_name":"Chennai_Store_6","latitude":13.074918,"longitude":80.258822,"product_id":"P3","product_name":"Sugar","date":"2024-08-10","year":2024,"month":8,"quantity":47,"price_per_unit":535,"total_value":25145,"supply_status":"No"},{"store_id":"S7","store_name":"Chennai_Store_7","latitude":13.089457,"longitude":80.278549,"product_id":"P3","product_name":"Sugar","date":"2024-09-15","year":2024,"month":9,"quantity":29,"price_per_unit":408,"total_value":11832,"supply_status":"Yes"},{"store_id":"S8","store_name":"Chennai_Store_8","latitude":13.087702,"longitude":80.259883,"product_id":"P1","product_name":"Rice","date":"2024-08-10","year":2024,"month":8,"quantity":146,"price_per_unit":500,"total_value":73000,"supply_status":"No"},{"store_id":"S9","store_name":"Chennai_Store_9","latitude":13.070915,"longitude":80.259734,"product_id":"P3","product_name":"Sugar","date":"2024-05-24","year":2024,"month":5,"quantity":60,"price_per_unit":417,"total_value":25020,"supply_status":"No"},{"store_id":"S10","store_name":"Chennai_Store_10","latitude":13.096919,"longitude":80.273103,"product_id":"P3","product_name":"Sugar","date":"2024-10-21","year":2024,"month":10,"quantity":73,"price_per_unit":363,"total_value":26499,"supply_status":"No"},{"store_id":"S11","store_name":"Chennai_Store_11","latitude":13.083281,"longitude":80.268437,"product_id":"P1","product_name":"Rice","date":"2025-12-15","year":2025,"month":12,"quantity":74,"price_per_unit":471,"total_value":34854,"supply_status":"Yes"},{"store_id":"S12","store_name":"Chennai_Store_12","latitude":13.085765,"longitude":80.285506,"product_id":"P1","product_name":"Rice","date":"2024-08-28","year":2024,"month":8,"quantity":108,"price_per_unit":470,"total_value":50760,"supply_status":"Yes"},{"store_id":"S13","store_name":"Chennai_Store_13","latitude":13.070451,"longitude":80.276922,"product_id":"P1","product_name":"Rice","date":"2024-02-13","year":2024,"month":2,"quantity":67,"price_per_unit":411,"total_value":27537,"supply_status":"No"},{"store_id":"S14","store_name":"Chennai_Store_14","latitude":13.094679,"longitude":80.267377,"product_id":"P1","product_name":"Rice","date":"2024-03-08","year":2024,"month":3,"quantity":41,"price_per_unit":468,"total_value":19188,"supply_status":"No"},{"store_id":"S15","store_name":"Chennai_Store_15","latitude":13.084407,"longitude":80.279055,"product_id":"P2","product_name":"Oil","date":"2025-09-29","year":2025,"month":9,"quantity":68,"price_per_unit":530,"total_value":36040,"supply_status":"No"},{"store_id":"S16","store_name":"Chennai_Store_16","latitude":13.077949,"longitude":80.275546,"product_id":"P1","product_name":"Rice","date":"2025-06-16","year":2025,"month":6,"quantity":105,"price_per_unit":518,"total_value":54390,"supply_status":"Yes"},{"store_id":"S17","store_name":"Chennai_Store_17","latitude":13.087585,"longitude":80.260864,"product_id":"P2","product_name":"Oil","date":"2026-02-07","year":2026,"month":2,"quantity":134,"price_per_unit":461,"total_value":61774,"supply_status":"Yes"},{"store_id":"S18","store_name":"Chennai_Store_18","latitude":13.077732,"longitude":80.283564,"product_id":"P3","product_name":"Sugar","date":"2024-01-30","year":2024,"month":1,"quantity":143,"price_per_unit":462,"total_value":66066,"supply_status":"Yes"},{"store_id":"S19","store_name":"Chennai_Store_19","latitude":13.089947,"longitude":80.265174,"product_id":"P2","product_name":"Oil","date":"2025-01-06","year":2025,"month":1,"quantity":59,"price_per_unit":524,"total_value":30916,"supply_status":"Yes"},{"store_id":"S20","store_name":"Chennai_Store_20","latitude":13.09127,"longitude":80.265345,"product_id":"P1","product_name":"Rice","date":"2024-06-27","year":2024,"month":6,"quantity":100,"price_per_unit":460,"total_value":46000,"supply_status":"Yes"},{"store_id":"S21","store_name":"Chennai_Store_21","latitude":13.094978,"longitude":80.266216,"product_id":"P1","product_name":"Rice","date":"2024-05-01","year":2024,"month":5,"quantity":147,"price_per_unit":460,"total_value":67620,"supply_status":"No"},{"store_id":"S22","store_name":"Chennai_Store_22","latitude":13.074514,"longitude":80.263812,"product_id":"P2","product_name":"Oil","date":"2026-02-15","year":2026,"month":2,"quantity":56,"price_per_unit":502,"total_value":28112,"supply_status":"No"},{"store_id":"S23","store_name":"Chennai_Store_23","latitude":13.090058,"longitude":80.278202,"product_id":"P3","product_name":"Sugar","date":"2025-03-08","year":2025,"month":3,"quantity":56,"price_per_unit":441,"total_value":24696,"supply_status":"No"},{"store_id":"S24","store_name":"Chennai_Store_24","latitude":13.068218,"longitude":80.274342,"product_id":"P3","product_name":"Sugar","date":"2025-02-27","year":2025,"month":2,"quantity":34,"price_per_unit":391,"total_value":13294,"supply_status":"No"},{"store_id":"S25","store_name":"Chennai_Store_25","latitude":13.087951,"longitude":80.281439,"product_id":"P1","product_name":"Rice","date":"2024-05-05","year":2024,"month":5,"quantity":46,"price_per_unit":361,"total_value":16606,"supply_status":"Yes"},{"store_id":"S26","store_name":"Chennai_Store_26","latitude":13.086282,"longitude":80.265839,"product_id":"P3","product_name":"Sugar","date":"2024-03-19","year":2024,"month":3,"quantity":125,"price_per_unit":402,"total_value":50250,"supply_status":"No"},{"store_id":"S27","store_name":"Chennai_Store_27","latitude":13.090314,"longitude":80.274243,"product_id":"P2","product_name":"Oil","date":"2025-03-20","year":2025,"month":3,"quantity":148,"price_per_unit":396,"total_value":58608,"supply_status":"Yes"},{"store_id":"S28","store_name":"Chennai_Store_28","latitude":13.074964,"longitude":80.259076,"product_id":"P3","product_name":"Sugar","date":"2024-11-03","year":2024,"month":11,"quantity":100,"price_per_unit":356,"total_value":35600,"supply_status":"Yes"},{"store_id":"S29","store_name":"Chennai_Store_29","latitude":13.072717,"longitude":80.272652,"product_id":"P1","product_name":"Rice","date":"2024-05-01","year":2024,"month":5,"quantity":37,"price_per_unit":466,"total_value":17242,"supply_status":"Yes"},{"store_id":"S30","store_name":"Chennai_Store_30","latitude":13.085849,"longitude":80.257868,"product_id":"P2","product_name":"Oil","date":"2024-07-23","year":2024,"month":7,"quantity":108,"price_per_unit":548,"total_value":59184,"supply_status":"No"},{"store_id":"S31","store_name":"Chennai_Store_31","latitude":13.075163,"longitude":80.266499,"product_id":"P3","product_name":"Sugar","date":"2025-10-12","year":2025,"month":10,"quantity":75,"price_per_unit":477,"total_value":35775,"supply_status":"Yes"},{"store_id":"S32","store_name":"Chennai_Store_32","latitude":13.085816,"longitude":80.266417,"product_id":"P3","product_name":"Sugar","date":"2024-03-07","year":2024,"month":3,"quantity":120,"price_per_unit":404,"total_value":48480,"supply_status":"Yes"},{"store_id":"S33","store_name":"Chennai_Store_33","latitude":13.090249,"longitude":80.285132,"product_id":"P1","product_name":"Rice","date":"2026-02-11","year":2026,"month":2,"quantity":64,"price_per_unit":519,"total_value":33216,"supply_status":"No"},{"store_id":"S34","store_name":"Chennai_Store_34","latitude":13.085162,"longitude":80.26178,"product_id":"P3","product_name":"Sugar","date":"2025-10-22","year":2025,"month":10,"quantity":149,"price_per_unit":396,"total_value":59004,"supply_status":"No"},{"store_id":"S35","store_name":"Chennai_Store_35","latitude":13.085462,"longitude":80.282351,"product_id":"P2","product_name":"Oil","date":"2024-12-19","year":2024,"month":12,"quantity":67,"price_per_unit":384,"total_value":25728,"supply_status":"No"},{"store_id":"S36","store_name":"Chennai_Store_36","latitude":13.06996,"longitude":80.266284,"product_id":"P2","product_name":"Oil","date":"2025-03-08","year":2025,"month":3,"quantity":140,"price_per_unit":403,"total_value":56420,"supply_status":"Yes"},{"store_id":"S37","store_name":"Chennai_Store_37","latitude":13.091573,"longitude":80.279095,"product_id":"P3","product_name":"Sugar","date":"2024-09-08","year":2024,"month":9,"quantity":100,"price_per_unit":407,"total_value":40700,"supply_status":"No"},{"store_id":"S38","store_name":"Chennai_Store_38","latitude":13.083808,"longitude":80.283056,"product_id":"P3","product_name":"Sugar","date":"2026-01-29","year":2026,"month":1,"quantity":69,"price_per_unit":402,"total_value":27738,"supply_status":"Yes"},{"store_id":"S39","store_name":"Chennai_Store_39","latitude":13.075849,"longitude":80.266429,"product_id":"P3","product_name":"Sugar","date":"2024-06-04","year":2024,"month":6,"quantity":99,"price_per_unit":505,"total_value":49995,"supply_status":"No"},{"store_id":"S40","store_name":"Chennai_Store_40","latitude":13.083256,"longitude":80.27237,"product_id":"P2","product_name":"Oil","date":"2024-09-20","year":2024,"month":9,"quantity":48,"price_per_unit":372,"total_value":17856,"supply_status":"No"},{"store_id":"S41","store_name":"Chennai_Store_41","latitude":13.080942,"longitude":80.269491,"product_id":"P1","product_name":"Rice","date":"2024-11-29","year":2024,"month":11,"quantity":120,"price_per_unit":357,"total_value":42840,"supply_status":"No"},{"store_id":"S42","store_name":"Chennai_Store_42","latitude":13.071302,"longitude":80.285164,"product_id":"P3","product_name":"Sugar","date":"2025-09-19","year":2025,"month":9,"quantity":56,"price_per_unit":471,"total_value":26376,"supply_status":"Yes"},{"store_id":"S43","store_name":"Chennai_Store_43","latitude":13.081344,"longitude":80.285494,"product_id":"P2","product_name":"Oil","date":"2025-10-31","year":2025,"month":10,"quantity":111,"price_per_unit":487,"total_value":54057,"supply_status":"Yes"},{"store_id":"S44","store_name":"Chennai_Store_44","latitude":13.087077,"longitude":80.267793,"product_id":"P3","product_name":"Sugar","date":"2024-02-14","year":2024,"month":2,"quantity":104,"price_per_unit":354,"total_value":36816,"supply_status":"Yes"},{"store_id":"S45","store_name":"Chennai_Store_45","latitude":13.072128,"longitude":80.266988,"product_id":"P3","product_name":"Sugar","date":"2026-01-29","year":2026,"month":1,"quantity":62,"price_per_unit":524,"total_value":32488,"supply_status":"No"},{"store_id":"S46","store_name":"Chennai_Store_46","latitude":13.087662,"longitude":80.2633,"product_id":"P1","product_name":"Rice","date":"2024-12-16","year":2024,"month":12,"quantity":135,"price_per_unit":417,"total_value":56295,"supply_status":"Yes"},{"store_id":"S47","store_name":"Chennai_Store_47","latitude":13.086948,"longitude":80.257746,"product_id":"P2","product_name":"Oil","date":"2024-10-27","year":2024,"month":10,"quantity":86,"price_per_unit":452,"total_value":38872,"supply_status":"No"},{"store_id":"S48","store_name":"Chennai_Store_48","latitude":13.090095,"longitude":80.283829,"product_id":"P2","product_name":"Oil","date":"2024-11-28","year":2024,"month":11,"quantity":128,"price_per_unit":502,"total_value":64256,"supply_status":"No"},{"store_id":"S49","store_name":"Chennai_Store_49","latitude":13.067729,"longitude":80.279448,"product_id":"P2","product_name":"Oil","date":"2024-02-16","year":2024,"month":2,"quantity":141,"price_per_unit":397,"total_value":55977,"supply_status":"Yes"},{"store_id":"S50","store_name":"Chennai_Store_50","latitude":13.084083,"longitude":80.258224,"product_id":"P3","product_name":"Sugar","date":"2024-02-01","year":2024,"month":2,"quantity":34,"price_per_unit":549,"total_value":18666,"supply_status":"No"},{"store_id":"S51","store_name":"Chennai_Store_51","latitude":13.088956,"longitude":80.281226,"product_id":"P1","product_name":"Rice","date":"2024-11-23","year":2024,"month":11,"quantity":70,"price_per_unit":389,"total_value":27230,"supply_status":"Yes"},{"store_id":"S52","store_name":"Chennai_Store_52","latitude":13.071596,"longitude":80.26212,"product_id":"P2","product_name":"Oil","date":"2025-12-16","year":2025,"month":12,"quantity":73,"price_per_unit":453,"total_value":33069,"supply_status":"No"},{"store_id":"S53","store_name":"Chennai_Store_53","latitude":13.095385,"longitude":80.26584,"product_id":"P3","product_name":"Sugar","date":"2024-03-19","year":2024,"month":3,"quantity":122,"price_per_unit":526,"total_value":64172,"supply_status":"No"},{"store_id":"S54","store_name":"Chennai_Store_54","latitude":13.094456,"longitude":80.272749,"product_id":"P3","product_name":"Sugar","date":"2026-01-07","year":2026,"month":1,"quantity":116,"price_per_unit":366,"total_value":42456,"supply_status":"No"},{"store_id":"S55","store_name":"Chennai_Store_55","latitude":13.068624,"longitude":80.274272,"product_id":"P3","product_name":"Sugar","date":"2025-07-18","year":2025,"month":7,"quantity":68,"price_per_unit":492,"total_value":33456,"supply_status":"No"},{"store_id":"S56","store_name":"Chennai_Store_56","latitude":13.089668,"longitude":80.270616,"product_id":"P1","product_name":"Rice","date":"2025-01-31","year":2025,"month":1,"quantity":100,"price_per_unit":548,"total_value":54800,"supply_status":"Yes"},{"store_id":"S57","store_name":"Chennai_Store_57","latitude":13.070046,"longitude":80.267312,"product_id":"P2","product_name":"Oil","date":"2024-05-03","year":2024,"month":5,"quantity":110,"price_per_unit":433,"total_value":47630,"supply_status":"Yes"},{"store_id":"S58","store_name":"Chennai_Store_58","latitude":13.073507,"longitude":80.269556,"product_id":"P1","product_name":"Rice","date":"2024-02-03","year":2024,"month":2,"quantity":32,"price_per_unit":498,"total_value":15936,"supply_status":"Yes"},{"store_id":"S59","store_name":"Chennai_Store_59","latitude":13.092862,"longitude":80.268401,"product_id":"P3","product_name":"Sugar","date":"2024-10-08","year":2024,"month":10,"quantity":142,"price_per_unit":364,"total_value":51688,"supply_status":"Yes"},{"store_id":"S60","store_name":"Chennai_Store_60","latitude":13.087545,"longitude":80.256277,"product_id":"P1","product_name":"Rice","date":"2024-09-26","year":2024,"month":9,"quantity":133,"price_per_unit":451,"total_value":59983,"supply_status":"No"},{"store_id":"S61","store_name":"Chennai_Store_61","latitude":13.089883,"longitude":80.282331,"product_id":"P2","product_name":"Oil","date":"2024-11-22","year":2024,"month":11,"quantity":60,"price_per_unit":400,"total_value":24000,"supply_status":"No"},{"store_id":"S62","store_name":"Chennai_Store_62","latitude":13.075017,"longitude":80.267213,"product_id":"P1","product_name":"Rice","date":"2024-04-26","year":2024,"month":4,"quantity":107,"price_per_unit":487,"total_value":52109,"supply_status":"No"},{"store_id":"S63","store_name":"Chennai_Store_63","latitude":13.070202,"longitude":80.282094,"product_id":"P3","product_name":"Sugar","date":"2025-03-18","year":2025,"month":3,"quantity":24,"price_per_unit":399,"total_value":9576,"supply_status":"No"},{"store_id":"S64","store_name":"Chennai_Store_64","latitude":13.074681,"longitude":80.261003,"product_id":"P3","product_name":"Sugar","date":"2026-02-05","year":2026,"month":2,"quantity":43,"price_per_unit":533,"total_value":22919,"supply_status":"No"},{"store_id":"S65","store_name":"Chennai_Store_65","latitude":13.073097,"longitude":80.264633,"product_id":"P1","product_name":"Rice","date":"2025-04-07","year":2025,"month":4,"quantity":97,"price_per_unit":387,"total_value":37539,"supply_status":"No"},{"store_id":"S66","store_name":"Chennai_Store_66","latitude":13.075477,"longitude":80.258139,"product_id":"P1","product_name":"Rice","date":"2025-04-25","year":2025,"month":4,"quantity":35,"price_per_unit":544,"total_value":19040,"supply_status":"No"},{"store_id":"S67","store_name":"Chennai_Store_67","latitude":13.090132,"longitude":80.263513,"product_id":"P2","product_name":"Oil","date":"2025-06-16","year":2025,"month":6,"quantity":57,"price_per_unit":371,"total_value":21147,"supply_status":"Yes"},{"store_id":"S68","store_name":"Chennai_Store_68","latitude":13.070212,"longitude":80.277207,"product_id":"P2","product_name":"Oil","date":"2025-09-06","year":2025,"month":9,"quantity":96,"price_per_unit":444,"total_value":42624,"supply_status":"Yes"},{"store_id":"S69","store_name":"Chennai_Store_69","latitude":13.08063,"longitude":80.285456,"product_id":"P3","product_name":"Sugar","date":"2025-05-17","year":2025,"month":5,"quantity":129,"price_per_unit":487,"total_value":62823,"supply_status":"Yes"},{"store_id":"S70","store_name":"Chennai_Store_70","latitude":13.073438,"longitude":80.260935,"product_id":"P1","product_name":"Rice","date":"2025-12-18","year":2025,"month":12,"quantity":64,"price_per_unit":512,"total_value":32768,"supply_status":"No"},{"store_id":"S71","store_name":"Chennai_Store_71","latitude":13.074733,"longitude":80.260105,"product_id":"P2","product_name":"Oil","date":"2025-12-28","year":2025,"month":12,"quantity":21,"price_per_unit":534,"total_value":11214,"supply_status":"No"},{"store_id":"S72","store_name":"Chennai_Store_72","latitude":13.087955,"longitude":80.268681,"product_id":"P3","product_name":"Sugar","date":"2024-02-18","year":2024,"month":2,"quantity":92,"price_per_unit":408,"total_value":37536,"supply_status":"No"},{"store_id":"S73","store_name":"Chennai_Store_73","latitude":13.089963,"longitude":80.267002,"product_id":"P2","product_name":"Oil","date":"2024-04-21","year":2024,"month":4,"quantity":66,"price_per_unit":528,"total_value":34848,"supply_status":"Yes"},{"store_id":"S74","store_name":"Chennai_Store_74","latitude":13.083029,"longitude":80.264662,"product_id":"P1","product_name":"Rice","date":"2024-09-19","year":2024,"month":9,"quantity":38,"price_per_unit":493,"total_value":18734,"supply_status":"Yes"},{"store_id":"S75","store_name":"Chennai_Store_75","latitude":13.087105,"longitude":80.263595,"product_id":"P2","product_name":"Oil","date":"2025-06-07","year":2025,"month":6,"quantity":142,"price_per_unit":472,"total_value":67024,"supply_status":"No"},{"store_id":"S76","store_name":"Chennai_Store_76","latitude":13.075918,"longitude":80.284333,"product_id":"P3","product_name":"Sugar","date":"2024-09-03","year":2024,"month":9,"quantity":60,"price_per_unit":528,"total_value":31680,"supply_status":"No"},{"store_id":"S77","store_name":"Chennai_Store_77","latitude":13.068638,"longitude":80.265134,"product_id":"P1","product_name":"Rice","date":"2024-09-08","year":2024,"month":9,"quantity":146,"price_per_unit":513,"total_value":74898,"supply_status":"No"},{"store_id":"S78","store_name":"Chennai_Store_78","latitude":13.086386,"longitude":80.276857,"product_id":"P1","product_name":"Rice","date":"2025-12-17","year":2025,"month":12,"quantity":34,"price_per_unit":517,"total_value":17578,"supply_status":"Yes"},{"store_id":"S79","store_name":"Chennai_Store_79","latitude":13.096758,"longitude":80.269481,"product_id":"P1","product_name":"Rice","date":"2025-08-09","year":2025,"month":8,"quantity":108,"price_per_unit":522,"total_value":56376,"supply_status":"No"},{"store_id":"S80","store_name":"Chennai_Store_80","latitude":13.081743,"longitude":80.261144,"product_id":"P1","product_name":"Rice","date":"2024-01-08","year":2024,"month":1,"quantity":81,"price_per_unit":533,"total_value":43173,"supply_status":"No"},{"store_id":"S81","store_name":"Chennai_Store_81","latitude":13.076532,"longitude":80.265788,"product_id":"P2","product_name":"Oil","date":"2025-05-29","year":2025,"month":5,"quantity":49,"price_per_unit":361,"total_value":17689,"supply_status":"Yes"},{"store_id":"S82","store_name":"Chennai_Store_82","latitude":13.096954,"longitude":80.260166,"product_id":"P2","product_name":"Oil","date":"2024-11-27","year":2024,"month":11,"quantity":29,"price_per_unit":489,"total_value":14181,"supply_status":"Yes"},{"store_id":"S83","store_name":"Chennai_Store_83","latitude":13.094817,"longitude":80.26649,"product_id":"P2","product_name":"Oil","date":"2025-01-22","year":2025,"month":1,"quantity":21,"price_per_unit":411,"total_value":8631,"supply_status":"No"},{"store_id":"S84","store_name":"Chennai_Store_84","latitude":13.0926,"longitude":80.256824,"product_id":"P2","product_name":"Oil","date":"2024-01-29","year":2024,"month":1,"quantity":63,"price_per_unit":383,"total_value":24129,"supply_status":"No"},{"store_id":"S85","store_name":"Chennai_Store_85","latitude":13.076987,"longitude":80.281611,"product_id":"P3","product_name":"Sugar","date":"2024-01-28","year":2024,"month":1,"quantity":88,"price_per_unit":423,"total_value":37224,"supply_status":"No"},{"store_id":"S86","store_name":"Chennai_Store_86","latitude":13.087689,"longitude":80.278064,"product_id":"P2","product_name":"Oil","date":"2024-01-29","year":2024,"month":1,"quantity":34,"price_per_unit":363,"total_value":12342,"supply_status":"No"},{"store_id":"S87","store_name":"Chennai_Store_87","latitude":13.092051,"longitude":80.272644,"product_id":"P3","product_name":"Sugar","date":"2025-05-30","year":2025,"month":5,"quantity":148,"price_per_unit":466,"total_value":68968,"supply_status":"Yes"},{"store_id":"S88","store_name":"Chennai_Store_88","latitude":13.08591,"longitude":80.28112,"product_id":"P1","product_name":"Rice","date":"2024-06-07","year":2024,"month":6,"quantity":55,"price_per_unit":485,"total_value":26675,"supply_status":"No"},{"store_id":"S89","store_name":"Chennai_Store_89","latitude":13.071984,"longitude":80.266311,"product_id":"P3","product_name":"Sugar","date":"2024-12-24","year":2024,"month":12,"quantity":105,"price_per_unit":400,"total_value":42000,"supply_status":"Yes"},{"store_id":"S90","store_name":"Chennai_Store_90","latitude":13.097095,"longitude":80.274245,"product_id":"P3","product_name":"Sugar","date":"2025-05-07","year":2025,"month":5,"quantity":75,"price_per_unit":463,"total_value":34725,"supply_status":"No"},{"store_id":"S91","store_name":"Chennai_Store_91","latitude":13.074184,"longitude":80.267003,"product_id":"P2","product_name":"Oil","date":"2025-05-08","year":2025,"month":5,"quantity":144,"price_per_unit":415,"total_value":59760,"supply_status":"Yes"},{"store_id":"S92","store_name":"Chennai_Store_92","latitude":13.091815,"longitude":80.280676,"product_id":"P2","product_name":"Oil","date":"2025-03-08","year":2025,"month":3,"quantity":130,"price_per_unit":447,"total_value":58110,"supply_status":"No"},{"store_id":"S93","store_name":"Chennai_Store_93","latitude":13.081947,"longitude":80.258091,"product_id":"P3","product_name":"Sugar","date":"2024-05-26","year":2024,"month":5,"quantity":110,"price_per_unit":537,"total_value":59070,"supply_status":"No"},{"store_id":"S94","store_name":"Chennai_Store_94","latitude":13.088958,"longitude":80.279986,"product_id":"P1","product_name":"Rice","date":"2025-06-16","year":2025,"month":6,"quantity":79,"price_per_unit":374,"total_value":29546,"supply_status":"Yes"},{"store_id":"S95","store_name":"Chennai_Store_95","latitude":13.069869,"longitude":80.284758,"product_id":"P3","product_name":"Sugar","date":"2024-05-02","year":2024,"month":5,"quantity":147,"price_per_unit":430,"total_value":63210,"supply_status":"No"},{"store_id":"S96","store_name":"Chennai_Store_96","latitude":13.083342,"longitude":80.267804,"product_id":"P2","product_name":"Oil","date":"2024-11-14","year":2024,"month":11,"quantity":23,"price_per_unit":464,"total_value":10672,"supply_status":"Yes"},{"store_id":"S97","store_name":"Chennai_Store_97","latitude":13.081434,"longitude":80.263164,"product_id":"P2","product_name":"Oil","date":"2024-07-14","year":2024,"month":7,"quantity":123,"price_per_unit":531,"total_value":65313,"supply_status":"No"},{"store_id":"S98","store_name":"Chennai_Store_98","latitude":13.072424,"longitude":80.262026,"product_id":"P2","product_name":"Oil","date":"2025-05-22","year":2025,"month":5,"quantity":55,"price_per_unit":377,"total_value":20735,"supply_status":"Yes"},{"store_id":"S99","store_name":"Chennai_Store_99","latitude":13.070703,"longitude":80.256014,"product_id":"P1","product_name":"Rice","date":"2024-12-17","year":2024,"month":12,"quantity":67,"price_per_unit":373,"total_value":24991,"supply_status":"Yes"},{"store_id":"S100","store_name":"Chennai_Store_100","latitude":13.076942,"longitude":80.277001,"product_id":"P3","product_name":"Sugar","date":"2024-08-04","year":2024,"month":8,"quantity":74,"price_per_unit":452,"total_value":33448,"supply_status":"No"},{"store_id":"S101","store_name":"Chennai_Store_101","latitude":13.08725,"longitude":80.267361,"product_id":"P3","product_name":"Sugar","date":"2024-01-16","year":2024,"month":1,"quantity":58,"price_per_unit":419,"total_value":24302,"supply_status":"Yes"},{"store_id":"S102","store_name":"Chennai_Store_102","latitude":13.092761,"longitude":80.257359,"product_id":"P1","product_name":"Rice","date":"2024-09-22","year":2024,"month":9,"quantity":92,"price_per_unit":528,"total_value":48576,"supply_status":"No"},{"store_id":"S103","store_name":"Chennai_Store_103","latitude":13.088759,"longitude":80.277086,"product_id":"P1","product_name":"Rice","date":"2024-01-19","year":2024,"month":1,"quantity":88,"price_per_unit":455,"total_value":40040,"supply_status":"No"},{"store_id":"S104","store_name":"Chennai_Store_104","latitude":13.094999,"longitude":80.273136,"product_id":"P3","product_name":"Sugar","date":"2025-02-08","year":2025,"month":2,"quantity":74,"price_per_unit":468,"total_value":34632,"supply_status":"No"},{"store_id":"S105","store_name":"Chennai_Store_105","latitude":13.092268,"longitude":80.272712,"product_id":"P1","product_name":"Rice","date":"2025-02-03","year":2025,"month":2,"quantity":53,"price_per_unit":371,"total_value":19663,"supply_status":"Yes"},{"store_id":"S106","store_name":"Chennai_Store_106","latitude":13.08269,"longitude":80.263137,"product_id":"P1","product_name":"Rice","date":"2025-10-17","year":2025,"month":10,"quantity":96,"price_per_unit":366,"total_value":35136,"supply_status":"No"},{"store_id":"S107","store_name":"Chennai_Store_107","latitude":13.070015,"longitude":80.260569,"product_id":"P2","product_name":"Oil","date":"2025-07-07","year":2025,"month":7,"quantity":73,"price_per_unit":405,"total_value":29565,"supply_status":"Yes"},{"store_id":"S108","store_name":"Chennai_Store_108","latitude":13.095474,"longitude":80.273615,"product_id":"P3","product_name":"Sugar","date":"2024-09-17","year":2024,"month":9,"quantity":23,"price_per_unit":379,"total_value":8717,"supply_status":"Yes"},{"store_id":"S109","store_name":"Chennai_Store_109","latitude":13.091423,"longitude":80.275805,"product_id":"P2","product_name":"Oil","date":"2024-05-14","year":2024,"month":5,"quantity":75,"price_per_unit":483,"total_value":36225,"supply_status":"Yes"},{"store_id":"S110","store_name":"Chennai_Store_110","latitude":13.067891,"longitude":80.269873,"product_id":"P2","product_name":"Oil","date":"2025-10-09","year":2025,"month":10,"quantity":82,"price_per_unit":494,"total_value":40508,"supply_status":"No"},{"store_id":"S111","store_name":"Chennai_Store_111","latitude":13.087317,"longitude":80.27208,"product_id":"P2","product_name":"Oil","date":"2025-02-28","year":2025,"month":2,"quantity":56,"price_per_unit":539,"total_value":30184,"supply_status":"No"},{"store_id":"S112","store_name":"Chennai_Store_112","latitude":13.089008,"longitude":80.274946,"product_id":"P1","product_name":"Rice","date":"2024-01-03","year":2024,"month":1,"quantity":40,"price_per_unit":371,"total_value":14840,"supply_status":"No"},{"store_id":"S113","store_name":"Chennai_Store_113","latitude":13.088609,"longitude":80.269517,"product_id":"P2","product_name":"Oil","date":"2025-12-13","year":2025,"month":12,"quantity":68,"price_per_unit":412,"total_value":28016,"supply_status":"Yes"},{"store_id":"S114","store_name":"Chennai_Store_114","latitude":13.093744,"longitude":80.280809,"product_id":"P3","product_name":"Sugar","date":"2024-09-12","year":2024,"month":9,"quantity":43,"price_per_unit":494,"total_value":21242,"supply_status":"No"},{"store_id":"S115","store_name":"Chennai_Store_115","latitude":13.069422,"longitude":80.267971,"product_id":"P3","product_name":"Sugar","date":"2025-09-03","year":2025,"month":9,"quantity":39,"price_per_unit":489,"total_value":19071,"supply_status":"Yes"},{"store_id":"S116","store_name":"Chennai_Store_116","latitude":13.084054,"longitude":80.269985,"product_id":"P1","product_name":"Rice","date":"2024-09-11","year":2024,"month":9,"quantity":78,"price_per_unit":525,"total_value":40950,"supply_status":"Yes"},{"store_id":"S117","store_name":"Chennai_Store_117","latitude":13.071935,"longitude":80.284039,"product_id":"P2","product_name":"Oil","date":"2026-03-04","year":2026,"month":3,"quantity":141,"price_per_unit":537,"total_value":75717,"supply_status":"No"},{"store_id":"S118","store_name":"Chennai_Store_118","latitude":13.067876,"longitude":80.258564,"product_id":"P3","product_name":"Sugar","date":"2024-03-30","year":2024,"month":3,"quantity":115,"price_per_unit":503,"total_value":57845,"supply_status":"Yes"},{"store_id":"S119","store_name":"Chennai_Store_119","latitude":13.097376,"longitude":80.274509,"product_id":"P1","product_name":"Rice","date":"2025-07-11","year":2025,"month":7,"quantity":71,"price_per_unit":498,"total_value":35358,"supply_status":"No"},{"store_id":"S120","store_name":"Chennai_Store_120","latitude":13.093507,"longitude":80.271703,"product_id":"P1","product_name":"Rice","date":"2025-05-20","year":2025,"month":5,"quantity":69,"price_per_unit":367,"total_value":25323,"supply_status":"Yes"}];
+
+// ======================= STATE =======================
+let map, clusterGroup, circleLayer = null, markerMap = {};
+let selectedRadius = 1;
+let filteredStores = [];
+let allMarkers = [];
+let pinMarker = null;       // the single draggable pin
+let pendingPin = null;      // {lat, lng} waiting for confirmation
+let locationConfirmed = false;
+let charts = {};
+
+// ======================= HELPERS =======================
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getSupplyColor(s) {
+  if (s.year === 2026) return '#10b981';
+  if (s.year === 2025) return '#f59e0b';
+  return '#ef4444';
+}
+function getSupplyLabel(s) {
+  if (s.year === 2026) return 'This Year';
+  if (s.year === 2025) return 'Last Year';
+  return 'Stopped';
+}
+function getSupplyClass(s) {
+  if (s.year === 2026) return 'green';
+  if (s.year === 2025) return 'yellow';
+  return 'red';
+}
+
+function median(arr) {
+  const sorted = [...arr].sort((a,b)=>a-b);
+  const mid = Math.floor(sorted.length/2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+}
+
+function fmtChange(val) {
+  if (isNaN(val)||!isFinite(val)) return {txt:'—', cls:'neutral'};
+  const sign = val >= 0 ? '+' : '';
+  return {txt: sign+val.toFixed(1)+'%', cls: val >= 0 ? 'up' : 'down'};
+}
+
+// ======================= MAP INIT =======================
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([13.0830, 80.2707], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 19
+  }).addTo(map);
+
+  clusterGroup = L.layerGroup().addTo(map);
+  renderAllMarkers();
+
+  // Single click → show pending pin + confirmation toast
+  map.on('click', e => {
+    showPendingPin(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function showPendingPin(lat, lng) {
+  pendingPin = { lat, lng };
+  locationConfirmed = false;
+
+  // Remove old pin if exists
+  if (pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+
+  // Draw a pulsing pending pin (orange, dashed border = "not confirmed yet")
+  pinMarker = L.circleMarker([lat, lng], {
+    radius: 10,
+    fillColor: '#ff6b35',
+    color: '#ffffff',
+    weight: 2,
+    fillOpacity: 0.85,
+    dashArray: '4 3'
+  }).addTo(map).bindTooltip('Click "Yes, use this" to confirm', { permanent: false });
+
+  // Update inputs
+  document.getElementById('input-lat').value = lat.toFixed(6);
+  document.getElementById('input-lon').value = lng.toFixed(6);
+
+  // Show toast
+  document.getElementById('toast-coords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  document.getElementById('location-toast').classList.add('show');
+}
+
+function confirmLocation() {
+  locationConfirmed = true;
+  document.getElementById('location-toast').classList.remove('show');
+
+  // Upgrade pin to solid confirmed style
+  if (pinMarker) {
+    pinMarker.setStyle({ fillColor: '#00d4ff', color: 'white', weight: 2.5, fillOpacity: 1, dashArray: null });
+    pinMarker.unbindTooltip();
+    pinMarker.bindTooltip('📍 Selected Point', { permanent: false });
+  }
+
+  document.getElementById('status-text').textContent =
+    `Location set · ${pendingPin.lat.toFixed(4)}, ${pendingPin.lng.toFixed(4)} · Now choose radius, product and click Analyze`;
+}
+
+function cancelLocation() {
+  document.getElementById('location-toast').classList.remove('show');
+  if (pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+  pendingPin = null;
+  locationConfirmed = false;
+  document.getElementById('status-text').textContent = 'Cancelled — click the map to pick a location';
+}
+
+function renderAllMarkers() {
+  clusterGroup.clearLayers();
+  allMarkers = [];
+  markerMap = {};
+
+  RAW_DATA.forEach(s => {
+    const color = getSupplyColor(s);
+    const marker = L.circleMarker([s.latitude, s.longitude], {
+      radius: 7,
+      fillColor: color,
+      color: 'white',
+      weight: 1.5,
+      fillOpacity: 0.9,
+      opacity: 1
+    });
+    marker.bindPopup(makePopupHTML(s), { maxWidth: 260 });
+    marker.storeData = s;
+    clusterGroup.addLayer(marker);
+    allMarkers.push(marker);
+    markerMap[s.store_id] = marker;
+  });
+
+  document.getElementById('stat-total').textContent = RAW_DATA.length;
+}
+
+function makePopupHTML(s) {
+  const clsMap = getSupplyClass(s);
+  const hist = generatePriceHistory(s);
+  const histRows = hist.slice(-4).map(h => `<div class="popup-row"><span class="popup-key">${h.label}</span><span class="popup-val">₹${h.price}</span></div>`).join('');
+  return `<div class="popup-inner">
+    <div class="popup-title">${s.store_name}</div>
+    <div class="popup-row"><span class="popup-key">Product</span><span class="popup-val">${s.product_name}</span></div>
+    <div class="popup-row"><span class="popup-key">Last Price</span><span class="popup-val" style="color:#00d4ff">₹${s.price_per_unit}</span></div>
+    <div class="popup-row"><span class="popup-key">Date</span><span class="popup-val">${s.date}</span></div>
+    <div class="popup-row"><span class="popup-key">Supply Status</span><span class="popup-val"><span class="status-badge ${clsMap}">${getSupplyLabel(s)}</span></span></div>
+    <div class="popup-row"><span class="popup-key">Quantity</span><span class="popup-val">${s.quantity} units</span></div>
+    <div style="margin-top:8px;font-size:9px;color:#64748b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Price History</div>
+    ${histRows}
+  </div>`;
+}
+
+// Synthetic price history based on product baseline + variance
+function generatePriceHistory(s) {
+  const basePrice = s.price_per_unit;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const year = s.year;
+  const result = [];
+  for (let m = 0; m < 12; m++) {
+    const noise = Math.round((Math.random()-0.5)*40);
+    const trend = (m - s.month) * 2;
+    result.push({ label: months[m]+' '+year, price: Math.max(300, basePrice + noise + trend), month: m+1, year });
+  }
+  result.find(r => r.month === s.month).price = basePrice;
+  return result;
+}
+
+// ======================= ANALYSIS =======================
+function setRadius(km, el) {
+  selectedRadius = km;
+  document.querySelectorAll('.radius-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function runAnalysis() {
+  const lat = parseFloat(document.getElementById('input-lat').value);
+  const lon = parseFloat(document.getElementById('input-lon').value);
+  const product = document.getElementById('input-product').value;
+
+  if (isNaN(lat) || isNaN(lon)) {
+    alert('Click the map to pick a location first'); return;
+  }
+  if (!locationConfirmed) {
+    alert('Please confirm the location first — click the map, then tap "Yes, use this"'); return;
+  }
+
+  document.getElementById('status-text').textContent = `Analyzing ${selectedRadius}km radius around (${lat.toFixed(4)}, ${lon.toFixed(4)})…`;
+
+  // Draw radius circle
+  if (circleLayer) map.removeLayer(circleLayer);
+  circleLayer = L.circle([lat, lon], {
+    radius: selectedRadius * 1000,
+    color: '#00d4ff', fillColor: '#00d4ff', fillOpacity: 0.06,
+    weight: 2, dashArray: '6 4'
+  }).addTo(map);
+
+  map.setView([lat, lon], 14);
+
+  // Filter stores in radius
+  let inRadius = RAW_DATA.map(s => ({
+    ...s,
+    distance: haversine(lat, lon, s.latitude, s.longitude)
+  })).filter(s => s.distance <= selectedRadius);
+
+  document.getElementById('stat-radius').textContent = inRadius.length;
+
+  // Product filter
+  if (product !== 'all') inRadius = inRadius.filter(s => s.product_name === product);
+  filteredStores = inRadius.sort((a,b) => a.distance - b.distance);
+
+  document.getElementById('stat-filtered').textContent = filteredStores.length;
+
+  // Update markers — highlight in-radius, dim out-of-radius
+  allMarkers.forEach(m => {
+    const s = m.storeData;
+    const inFiltered = filteredStores.find(fs => fs.store_id === s.store_id);
+    if (inFiltered) {
+      m.setStyle({ radius: 10, fillColor: getSupplyColor(s), color: 'white', weight: 2.5, fillOpacity: 1, opacity: 1 });
+      m.bringToFront();
+    } else {
+      m.setStyle({ radius: 6, fillColor: getSupplyColor(s), color: '#ffffff40', weight: 1, fillOpacity: 0.25, opacity: 0.4 });
+    }
+  });
+
+  // Update KPIs
+  updateKPIs(filteredStores);
+  updateStoresTable(filteredStores);
+  updateCharts(filteredStores, product);
+  updatePricingEngine(filteredStores, product, lat, lon);
+
+  const productLabel = product === 'all' ? 'all products' : product;
+  document.getElementById('status-text').textContent = `${filteredStores.length} stores found · ${selectedRadius}km radius · ${productLabel}`;
+}
+
+function resetAll() {
+  if (circleLayer) { map.removeLayer(circleLayer); circleLayer = null; }
+  if (pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+  pendingPin = null;
+  locationConfirmed = false;
+  document.getElementById('location-toast').classList.remove('show');
+  document.getElementById('input-lat').value = '';
+  document.getElementById('input-lon').value = '';
+  // Reset all marker styles back to default
+  allMarkers.forEach(m => {
+    m.setStyle({ radius: 7, fillColor: getSupplyColor(m.storeData), color: 'white', weight: 1.5, fillOpacity: 0.9, opacity: 1 });
+  });
+  map.setView([13.0830, 80.2707], 13);
+  filteredStores = [];
+  document.getElementById('stat-radius').textContent = '—';
+  document.getElementById('stat-filtered').textContent = '—';
+  ['kpi-avg','kpi-median','kpi-last','kpi-yoy','kpi-mom','kpi-count'].forEach(id => document.getElementById(id).textContent = '—');
+  ['kpi-avg-sub','kpi-median-sub','kpi-last-sub','kpi-yoy-sub','kpi-mom-sub','kpi-count-sub'].forEach(id => {
+    const el = document.getElementById(id); el.className='kpi-change neutral'; el.textContent='—';
+  });
+  document.getElementById('stores-content').innerHTML = '<div class="no-data"><span>🗺️</span>Run analysis to see stores in radius</div>';
+  document.getElementById('pricing-content').innerHTML = '<div class="no-data"><span>⚡</span>Run analysis to see pricing recommendations</div>';
+  document.getElementById('status-text').textContent = 'Reset — Select product and radius to begin';
+  destroyCharts();
+}
+
+function updateKPIs(stores) {
+  if (!stores.length) return;
+  const prices = stores.map(s => s.price_per_unit);
+  const avg = prices.reduce((a,b)=>a+b,0)/prices.length;
+  const med = median(prices);
+
+  // Most recent
+  const sorted = [...stores].sort((a,b)=>b.date.localeCompare(a.date));
+  const lastPrice = sorted[0].price_per_unit;
+
+  // YoY: stores in 2024 vs 2025
+  const p2024 = stores.filter(s=>s.year===2024).map(s=>s.price_per_unit);
+  const p2025 = stores.filter(s=>s.year===2025).map(s=>s.price_per_unit);
+  let yoyChange = NaN;
+  if (p2024.length && p2025.length) {
+    const avg24 = p2024.reduce((a,b)=>a+b,0)/p2024.length;
+    const avg25 = p2025.reduce((a,b)=>a+b,0)/p2025.length;
+    yoyChange = (avg25 - avg24) / avg24 * 100;
+  }
+
+  // MoM: compare last 2 months of data
+  const byMonth = {};
+  stores.forEach(s => {
+    const key = `${s.year}-${String(s.month).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(s.price_per_unit);
+  });
+  const monthKeys = Object.keys(byMonth).sort();
+  let momChange = NaN;
+  if (monthKeys.length >= 2) {
+    const last = byMonth[monthKeys[monthKeys.length-1]];
+    const prev = byMonth[monthKeys[monthKeys.length-2]];
+    const avgLast = last.reduce((a,b)=>a+b,0)/last.length;
+    const avgPrev = prev.reduce((a,b)=>a+b,0)/prev.length;
+    momChange = (avgLast - avgPrev)/avgPrev * 100;
+  }
+
+  document.getElementById('kpi-avg').textContent = '₹'+Math.round(avg);
+  document.getElementById('kpi-median').textContent = '₹'+Math.round(med);
+  document.getElementById('kpi-last').textContent = '₹'+lastPrice;
+  document.getElementById('kpi-count').textContent = stores.length;
+
+  const yoy = fmtChange(yoyChange);
+  const mom = fmtChange(momChange);
+  const kpiYoy = document.getElementById('kpi-yoy');
+  const kpiMom = document.getElementById('kpi-mom');
+  kpiYoy.textContent = yoy.txt; kpiYoy.className = 'kpi-value';
+  kpiMom.textContent = mom.txt; kpiMom.className = 'kpi-value';
+
+  document.getElementById('kpi-yoy-sub').className = 'kpi-change '+yoy.cls;
+  document.getElementById('kpi-yoy-sub').textContent = '2024→2025';
+  document.getElementById('kpi-mom-sub').className = 'kpi-change '+mom.cls;
+  document.getElementById('kpi-mom-sub').textContent = 'month over month';
+  document.getElementById('kpi-avg-sub').textContent = stores.length+' stores';
+  document.getElementById('kpi-last-sub').textContent = sorted[0].date;
+  document.getElementById('kpi-count-sub').textContent = 'in '+selectedRadius+'km radius';
+}
+
+// ======================= STORES TABLE =======================
+function updateStoresTable(stores) {
+  if (!stores.length) {
+    document.getElementById('stores-content').innerHTML = '<div class="no-data"><span>🔍</span>No stores found in this radius</div>';
+    return;
+  }
+  const rows = stores.map(s => {
+    const sc = getSupplyClass(s);
+    const sl = getSupplyLabel(s);
+    return `<tr onclick="flyToStore('${s.store_id}')">
+      <td style="font-weight:600;color:var(--text)">${s.store_name.replace('Chennai_','')}</td>
+      <td>${s.distance.toFixed(2)} km</td>
+      <td style="color:var(--accent)">₹${s.price_per_unit}</td>
+      <td><span class="status-badge ${sc}">${sl}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('stores-content').innerHTML = `
+    <table class="stores-table">
+      <thead><tr><th>Store</th><th>Dist</th><th>Price</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function flyToStore(storeId) {
+  const marker = markerMap[storeId];
+  if (marker) {
+    const ll = marker.getLatLng();
+    map.setView(ll, 16);
+    marker.openPopup(ll);
+  }
+}
+
+// ======================= CHARTS =======================
+const CHART_DEFAULTS = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { family: "'DM Mono'" } } },
+    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { family: "'DM Mono'" } } }
+  }
+};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { if(c) c.destroy(); });
+  charts = {};
+}
+
+function updateCharts(stores, product) {
+  destroyCharts();
+  if (!stores.length) return;
+
+  // Monthly trend: group by year-month
+  const monthData = {};
+  stores.forEach(s => {
+    const key = `${s.year}-${String(s.month).padStart(2,'0')}`;
+    if (!monthData[key]) monthData[key] = [];
+    monthData[key].push(s.price_per_unit);
+  });
+  const mKeys = Object.keys(monthData).sort();
+  const mLabels = mKeys.map(k => { const [y,m]=k.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]+' '+y.slice(2); });
+  const mVals = mKeys.map(k => Math.round(monthData[k].reduce((a,b)=>a+b,0)/monthData[k].length));
+
+  const tCtx = document.getElementById('chart-trend').getContext('2d');
+  charts.trend = new Chart(tCtx, {
+    type: 'line',
+    data: {
+      labels: mLabels,
+      datasets: [{
+        data: mVals,
+        borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)',
+        tension: 0.4, fill: true, pointBackgroundColor: '#00d4ff', pointRadius: 4
+      }]
+    },
+    options: { ...CHART_DEFAULTS }
+  });
+
+  // YoY bar
+  const yoyData = {};
+  stores.forEach(s => {
+    if (!yoyData[s.year]) yoyData[s.year] = [];
+    yoyData[s.year].push(s.price_per_unit);
+  });
+  const years = Object.keys(yoyData).sort();
+  const yoyVals = years.map(y => Math.round(yoyData[y].reduce((a,b)=>a+b,0)/yoyData[y].length));
+  const barColors = years.map(y => y==='2026'?'#10b981': y==='2025'?'#f59e0b':'#ef4444');
+
+  const yCtx = document.getElementById('chart-yoy').getContext('2d');
+  charts.yoy = new Chart(yCtx, {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [{
+        data: yoyVals,
+        backgroundColor: barColors,
+        borderRadius: 4, barPercentage: 0.6
+      }]
+    },
+    options: { ...CHART_DEFAULTS }
+  });
+
+  // Price distribution histogram
+  const prices = stores.map(s=>s.price_per_unit);
+  const minP = Math.min(...prices), maxP = Math.max(...prices);
+  const binCount = 8;
+  const binSize = (maxP - minP) / binCount || 50;
+  const bins = Array(binCount).fill(0);
+  const binLabels = [];
+  for (let i=0;i<binCount;i++) {
+    const lo = Math.round(minP + i*binSize);
+    const hi = Math.round(minP + (i+1)*binSize);
+    binLabels.push(`₹${lo}`);
+  }
+  prices.forEach(p => {
+    const idx = Math.min(Math.floor((p - minP)/binSize), binCount-1);
+    bins[idx]++;
+  });
+
+  const dCtx = document.getElementById('chart-dist').getContext('2d');
+  charts.dist = new Chart(dCtx, {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{
+        data: bins,
+        backgroundColor: 'rgba(124,58,237,0.7)',
+        borderColor: '#7c3aed',
+        borderWidth: 1,
+        borderRadius: 3
+      }]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        y: { ...CHART_DEFAULTS.scales.y, title: { display: true, text: 'Count', color: '#64748b' } }
+      }
+    }
+  });
+}
+
+// ======================= PRICING ENGINE =======================
+function updatePricingEngine(stores, product, lat, lon) {
+  if (!stores.length) {
+    document.getElementById('pricing-content').innerHTML = '<div class="no-data"><span>⚡</span>No stores in radius to analyze</div>';
+    return;
+  }
+  const prices = stores.map(s=>s.price_per_unit);
+  const avg = Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
+  const med = Math.round(median(prices));
+  const sorted = [...stores].sort((a,b)=>b.date.localeCompare(a.date));
+  const lastPrice = sorted[0].price_per_unit;
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+
+  // Trend direction
+  const recent = stores.filter(s=>s.year>=2025).map(s=>s.price_per_unit);
+  const older = stores.filter(s=>s.year===2024).map(s=>s.price_per_unit);
+  let trend = 'stable';
+  if (recent.length && older.length) {
+    const rAvg = recent.reduce((a,b)=>a+b,0)/recent.length;
+    const oAvg = older.reduce((a,b)=>a+b,0)/older.length;
+    trend = rAvg > oAvg*1.03 ? 'rising' : rAvg < oAvg*0.97 ? 'falling' : 'stable';
+  }
+  const trendIcon = trend==='rising'?'📈':trend==='falling'?'📉':'➡️';
+
+  // Pricing suggestions
+  const recommended = Math.round(avg * 1.02); // Slightly above average — competitive premium
+  const competitive = Math.round(med * 0.97); // Just below median — undercut competition
+  const safe = Math.round(minP * 1.05);       // Near floor + 5% — guaranteed market share
+
+  const productLabel = product === 'all' ? 'All Products' : product;
+
+  document.getElementById('pricing-content').innerHTML = `
+    <div class="price-card">
+      <div class="price-card-title">📊 Market Analysis · ${productLabel}</div>
+      <div class="price-row"><span class="price-row-label">Median Nearby Price</span><span class="price-row-val" style="color:var(--accent)">₹${med}</span></div>
+      <div class="price-row"><span class="price-row-label">Average Nearby Price</span><span class="price-row-val" style="color:var(--accent)">₹${avg}</span></div>
+      <div class="price-row"><span class="price-row-label">Last Price (Most Recent)</span><span class="price-row-val" style="color:var(--text)">₹${lastPrice}</span></div>
+      <div class="price-row"><span class="price-row-label">Price Range</span><span class="price-row-val" style="color:var(--muted)">₹${minP} — ₹${maxP}</span></div>
+      <div class="price-row"><span class="price-row-label">Price Trend</span><span class="price-row-val" style="color:${trend==='rising'?'#10b981':trend==='falling'?'#ef4444':'#f59e0b'}">${trendIcon} ${trend.toUpperCase()}</span></div>
+      <div class="price-row"><span class="price-row-label">Stores Analyzed</span><span class="price-row-val">${stores.length}</span></div>
+    </div>
+
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin:4px 0 2px 2px;">💡 Price Recommendations</div>
+
+    <div class="suggest-card recommended">
+      <div class="suggest-badge">RECOMMENDED</div>
+      <div class="suggest-label">Recommended Price</div>
+      <div class="suggest-price">₹${recommended}</div>
+      <div class="suggest-desc">2% above area average — premium positioning with strong market acceptance. Best for maintaining margin while staying competitive.</div>
+    </div>
+
+    <div class="suggest-card competitive">
+      <div class="suggest-badge">AGGRESSIVE</div>
+      <div class="suggest-label">Competitive Price</div>
+      <div class="suggest-price">₹${competitive}</div>
+      <div class="suggest-desc">3% below market median — aggressively priced to capture volume and undercut nearby competitors.</div>
+    </div>
+
+    <div class="suggest-card safe">
+      <div class="suggest-badge">CONSERVATIVE</div>
+      <div class="suggest-label">Safe Price</div>
+      <div class="suggest-price">₹${safe}</div>
+      <div class="suggest-desc">5% above floor price — guaranteed market share while maintaining minimum profitability. Low-risk entry point.</div>
+    </div>
+  `;
+}
+
+// ======================= TABS =======================
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ======================= INIT =======================
+window.addEventListener('load', () => {
+  initMap();
+});
+</script>
+</body>
+</html>
